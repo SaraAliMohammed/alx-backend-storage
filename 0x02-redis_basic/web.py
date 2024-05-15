@@ -2,7 +2,8 @@
 '''A module with tools for request caching and tracking.'''
 import redis
 import requests
-from datetime import timedelta
+rc = redis.Redis()
+count = 0
 
 
 def get_page(url: str) -> str:
@@ -12,18 +13,11 @@ def get_page(url: str) -> str:
     Returns the content of a URL after caching the request's response,
     and tracking the request.
     '''
-    if url is None or len(url.strip()) == 0:
-        return ''
-    redis_store = redis.Redis()
-    res_key = 'result:{}'.format(url)
-    req_key = 'count:{}'.format(url)
-    result = redis_store.get(res_key)
-    if result is not None:
-        redis_store.incr(req_key)
-        return result
-    result = requests.get(url).content.decode('utf-8')
-    redis_store.setex(res_key, timedelta(seconds=10), result)
-    return result
+    rc.set(f"cached:{url}", count)
+    resp = requests.get(url)
+    rc.incr(f"count:{url}")
+    rc.setex(f"cached:{url}", 10, rc.get(f"cached:{url}"))
+    return resp.text
 
 
 if __name__ == "__main__":
