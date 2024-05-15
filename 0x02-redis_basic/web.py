@@ -2,9 +2,8 @@
 '''A module with tools for request caching and tracking.'''
 import redis
 import requests
-
-# Initialize Redis client
 rc = redis.Redis()
+count = 0
 
 
 def get_page(url: str) -> str:
@@ -14,24 +13,12 @@ def get_page(url: str) -> str:
     Returns the content of a URL after caching the request's response,
     and tracking the request.
     '''
-    # Check if the content is already cached
-    cached_content = rc.get(f"cached:{url}")
-    if cached_content:
-        return cached_content.decode('utf-8')
-
-    # If not cached, make the request
+    rc.set(f"cached:{url}", count)
     resp = requests.get(url)
-
-    # Increment the access count for the URL
     rc.incr(f"count:{url}")
-
-    # Cache the response content with an expiration time of 10 seconds
-    rc.setex(f"cached:{url}", 10, resp.text)
-
+    rc.setex(f"cached:{url}", 10, rc.get(f"cached:{url}"))
     return resp.text
 
 
 if __name__ == "__main__":
-    url =
-    'http://slowwly.robertomurray.co.uk/delay/5000/url/http://www.example.com'
-    print(get_page(url))
+    get_page('http://slowwly.robertomurray.co.uk')
